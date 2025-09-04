@@ -1,0 +1,8 @@
+# Raspberry Pi GPIO control
+RPi.GPIO>=0.7.0
+
+# Numerical computations
+numpy>=1.24.0
+
+# Computer vision
+opencv-python>=4.8.0
