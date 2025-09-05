@@ -1,4 +1,4 @@
-# 4ward
+# 4Ward
 
 # Engineering Materials for WRO Future Engineers 2025
 
@@ -9,7 +9,7 @@ Our project showcases a fully autonomous vehicle capable of navigating challenge
 
 ## Team Introduction
 
-**Team UneCirciut** consists of three members:  
+**Team 4Ward** consists of three members:  
 - **Hakim Musazada**  
 - **Shamil Mammadov**  
 - **Chichak Abdullayeva**
@@ -123,7 +123,7 @@ Located in [`component-photos/`](./component-photos/).
 
 ## Contact
 For questions, contact us at:  
-**une.circiut@azseu.edu.az**
+**team4ward.contact@gmail.com**
 
 ---
 
