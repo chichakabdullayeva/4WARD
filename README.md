@@ -2,7 +2,7 @@
 
 # Engineering Materials for WRO Future Engineers 2025
 
-This repository contains the engineering documentation for **UneCirciut's self-driving vehicle**, designed for the **World Robot Olympiad (WRO) Future Engineers 2025** competition.  
+This repository contains the engineering documentation for **self-driving vehicle of 4ward**, designed for the **World Robot Olympiad (WRO) Future Engineers 2025** competition.  
 Our project showcases a fully autonomous vehicle capable of navigating challenges through innovative **mobility, power management, sensing, and obstacle management strategies**.
 
 ---
@@ -30,8 +30,8 @@ Our vehicle is designed to excel in the WRO Future Engineers challenges, with a 
 ### Mobility
 - Drive system powered by a **single 6V 150 RPM DC motor** with an attached wheel.  
 - Rear-wheel drive via **gear system**.  
-- **Surpass Hobby 9g Digital Servo** controls the front wheels for steering.  
-- Motor driver: **TB6612FNG**, interfaced with **Raspberry Pi 4**.  
+- **Surpass Hobby 9g D1090FE Digital Servo Motor** controls the front wheels for steering.  
+- Motor driver: **TB6612FNG**, interfaced with **Raspberry Pi 4 Model B**.  
 
 This configuration allows **sharp turns, stable movement, and smooth acceleration**.
 
@@ -39,7 +39,7 @@ This configuration allows **sharp turns, stable movement, and smooth acceleratio
 
 ### Power Management
 - Powered by **three 3.7V 18650 Li-ion batteries** in series → ~**11.1V / 2200mAh**.  
-- **Step-down voltage regulator (HW-083)** provides 5V for Raspberry Pi and sensors.  
+- **Step-down voltage regulator (HW-083)** provides 5V for Raspberry Pi 4 Model B and sensors.  
 - Includes **Battery Management System (BMS)** to prevent over-discharge.  
 - Optimized for **20 minutes of continuous operation**.  
 
@@ -54,7 +54,7 @@ Our vehicle employs multiple sensors for navigation and obstacle detection:
 - **TCS3200 Color Sensor (x1)** → detect track markers & obstacles (red = right, green = left).  
 - **Raspberry Pi Camera Module V1.3** → line-following & visual recognition.  
 
-Data is processed in real time on **Raspberry Pi 4** with noise reduction via **moving average filter**.
+Data is processed in real time on **Raspberry Pi 4 Model B** with noise reduction via **moving average filter**.
 
 ---
 
@@ -73,12 +73,12 @@ Sensor noise was reduced by **averaging multiple readings**.
 ## Electromechanical Schematics
 Schematics will be uploaded in the [`schemes/`](./schemes/) directory:  
 
-- `wiring-diagram.png` → connections between Raspberry Pi 4, TB6612FNG, HC-SR04, TCS3200, Camera, Servo, and Battery.  
+- `wiring-diagram.png` → connections between Raspberry Pi 4 Model B, TB6612FNG, HC-SR04, TCS3200, Camera, Servo, and Battery.  
 
 ---
 
 ## Code Structure and Integration
-Source code is located in the [`src/`](./src/) directory, written in **Python** for Raspberry Pi 4.  
+Source code is located in the [`src/`](./src/) directory, written in **Python** for Raspberry Pi 4 Model B.  
 
 ### Code Modules
 - `main.py` → Orchestrates main control loop.  
@@ -97,7 +97,7 @@ Source code is located in the [`src/`](./src/) directory, written in **Python** 
 ## Component Photos
 Located in [`component-photos/`](./component-photos/).  
 
-- Raspberry Pi 4 Model B (4GB)  
+- Raspberry Pi 4 Model B Model B (4GB)  
 - Motor + Wheel Set (6V, 150 RPM)  
 - TB6612FNG Motor Driver  
 - HC-SR04 Ultrasonic Sensor  
