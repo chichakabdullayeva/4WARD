@@ -73,7 +73,7 @@ Sensor noise was reduced by **averaging multiple readings**.
 ## Electromechanical Schematics
 Schematics will be uploaded in the [`schemes/`](./schemes/) directory:  
 
-- `wiring-diagram.png` → connections between Raspberry Pi 4 Model B, Camera, HC-SR04, TCS3200, Servo, TB6612FNG, Voltage Regulator, DC Motor and Battery.  
+- `robot_schema_.png` and `robot_schema.jpg` → connections between Raspberry Pi 4 Model B, Camera, HC-SR04, TCS3200, Servo, TB6612FNG, Voltage Regulator, DC Motor and Battery.  
 
 ---
 
@@ -112,13 +112,12 @@ Located in [`components_picture/`](./components-picture/).
 - Vehicle Photos → [`v-photos/`](./v-photos/)  
   - `vehicle-front.jpg`, `vehicle-back.jpg`, `vehicle-left.jpg`, `vehicle-right.jpg`, `vehicle-top.jpg`, `vehicle-bottom.jpg`  
 - Team Photos → [`t-photos/`](./t-photos/)  
-- Demo Videos → [`video/video.md`](./video/video.md) (links to YouTube, ≥30s per challenge)  
+- Demo Videos → [`video/READMDE.md`](./video/video.md) (links to YouTube, ≥30s per challenge)  
 
 ---
 
 ## Additional Resources
 - [`models/`](./models/) → STL files for 3D-printed chassis parts
-- [`other/`](./other/) → Datasheets for sensors and motors  
 
 ---
 
@@ -128,4 +127,4 @@ For questions, contact us at:
 
 ---
 
-We encourage other teams to explore this repository for inspiration, in line with the **WRO open-sharing ethos**.
+
