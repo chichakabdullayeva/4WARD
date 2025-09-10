@@ -81,18 +81,21 @@ Schematics will be uploaded in the [`schemes/`](./schemes/) directory:
 Source code is located in the [`src/`](./src/) directory, written in **Python** for Raspberry Pi 4 Model B.  
 
 ### Code Modules
-- `main.py` → Orchestrates main control loop.  
-- `sensors.py` → Interfaces with ultrasonic, color sensor, and camera.  
-- `motors.py` → Controls DC motor & steering servo via TB6612FNG.  
-- `navigation.py` → Implements rule-based pathfinding & line-following.  
-- `utils.py` → Helper functions (data filtering, logging).  
-
+- `main.py` → Runs the core control loop, combining camera-based color detection, ultrasonic obstacle avoidance, servo steering, and motor control. 
+- `camera&servo.py` → Processes camera feed to detect red/green signs and steers the servo using a PD controller.
+- `color_sensor.py` → Reads RGB frequencies from TCS3200 sensor, normalizes values, and detects orange or blue objects. 
+- `ultrasonic_test`  → Measures distance using HC-SR04 ultrasonic sensor with timeout handling to detect obstacles.
+- `ultrasonic&servo&driver.py` → Integrates ultrasonic sensors, camera color detection, motor control, and servo steering for obstacle avoidance and navigation.
 ### Relation to Hardware
-- `sensors.py` → GPIO 17,18,27 (ultrasonic), GPIO 22,23 (color sensor), CSI (camera).  
-- `motors.py` → GPIO 24,25 (PWM for DC motor), GPIO 12 (servo).  
-- `navigation.py` → Processes sensor data to adjust motor speeds.
+`ultrasonic_test.py` → GPIO 21 (TRIG Front), GPIO 20 (ECHO Front), GPIO 27 (TRIG Left), GPIO 17 (ECHO Left), GPIO 4 (TRIG Right), GPIO 23 (ECHO Right).
 
----
+`camera_servo.py`' → GPIO 18 (servo pin for camera rotation).
+
+`ultrasonic_servo_driver.py` → GPIO 18 (servo), GPIO 21/20 (front sensor), GPIO 27/17 (left sensor), GPIO 4/23 (right sensor), GPIO 13 (motor PWM), GPIO 24 (MOTOR_IN1), GPIO 25 (MOTOR_IN2).
+
+`color_sensor.py` → Uses OpenCV with camera input (no GPIO pins).
+
+`main.py` → Coordinates modules (no direct GPIO assignment).
 
 ## Component Photos
 Located in [`components_picture/`](./components-picture/).  
