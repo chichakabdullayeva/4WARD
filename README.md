@@ -39,7 +39,7 @@ This configuration allows **sharp turns, stable movement, and smooth acceleratio
 
 ### Power Management
 - Powered by **two 3.7V 18650 Li-ion batteries** in series → ~**7.4V / 2200mAh**.  
-- **Step-down voltage regulator (HW-083)** provides 5V for Raspberry Pi 4 Model B and sensors.  
+- **Step-down voltage regulator** provides 5V for Raspberry Pi 4 Model B and sensors.  
 - Includes **Battery Management System (BMS)** to prevent over-discharge.  
 - Optimized for **20 minutes of continuous operation**.  
 
