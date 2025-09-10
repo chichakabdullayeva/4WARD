@@ -18,8 +18,8 @@ We are students from **Baku Engineering University**, passionate about electroni
 Our goal is to design a robust vehicle that balances **performance, reliability, and creativity**, inspired by real-world self-driving technology.
 
 Team photos will be uploaded in the [`t-photos/`](./t-photos/) directory:  
-- `team-official.jpg` → Formal team photo  
-- `team-fun.jpg` → Fun team photo  
+- `team-official.jpeg` → Formal team photo  
+- `team-fun.jpeg` → Fun team photo  
 
 ---
 
@@ -38,7 +38,7 @@ This configuration allows **sharp turns, stable movement, and smooth acceleratio
 ---
 
 ### Power Management
-- Powered by **three 3.7V 18650 Li-ion batteries** in series → ~**11.1V / 2200mAh**.  
+- Powered by **two 3.7V 18650 Li-ion batteries** in series → ~**7.4V / 2200mAh**.  
 - **Step-down voltage regulator (HW-083)** provides 5V for Raspberry Pi 4 Model B and sensors.  
 - Includes **Battery Management System (BMS)** to prevent over-discharge.  
 - Optimized for **20 minutes of continuous operation**.  
@@ -51,7 +51,7 @@ Challenge: Voltage drops under heavy motor load → **solved with capacitors** f
 Our vehicle employs multiple sensors for navigation and obstacle detection:
 
 - **HC-SR04 Ultrasonic Sensors (x3)** → front, left, right (range: 2m).  
-- **TCS3200 Color Sensor (x1)** → detect track markers & obstacles (red = right, green = left).  
+- **TCS3200 Color Sensor (x1)** → detect track markers.  
 - **Raspberry Pi Camera Module V1.3** → line-following & visual recognition.  
 
 Data is processed in real time on **Raspberry Pi 4 Model B** with noise reduction via **moving average filter**.
@@ -95,7 +95,7 @@ Source code is located in the [`src/`](./src/) directory, written in **Python** 
 ---
 
 ## Component Photos
-Located in [`component-photos/`](./component-photos/).  
+Located in [`components_picture/`](./components-picture/).  
 
 - Raspberry Pi 4 Model B Model B (4GB)  
 - Motor + Wheel Set (6V, 150 RPM)  
@@ -116,7 +116,7 @@ Located in [`component-photos/`](./component-photos/).
 ---
 
 ## Additional Resources
-- [`models/`](./models/) → STL files for 3D-printed chassis parts  
+- [`models/`](./models/) → STL files for 3D-printed chassis parts
 - [`other/`](./other/) → Datasheets for sensors and motors  
 
 ---
