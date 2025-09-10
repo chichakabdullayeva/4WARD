@@ -97,13 +97,14 @@ Source code is located in the [`src/`](./src/) directory, written in **Python** 
 ## Component Photos
 Located in [`components_picture/`](./components-picture/).  
 
-- Raspberry Pi 4 Model B Model B (4GB)  
+- Raspberry Pi 4 Model B (4GB)  
 - Motor + Wheel Set (6V, 150 RPM)  
 - TB6612FNG Motor Driver  
 - HC-SR04 Ultrasonic Sensor  
 - Raspberry Pi Camera Module  
 - Servo Motor  
-- TCS3200 Color Sensor  
+- TCS3200 Color Sensor
+- LiPo Batteries 18650 
 
 ---
 
