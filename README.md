@@ -28,7 +28,7 @@ Team photos will be uploaded in the [`t-photos/`](./t-photos/) directory:
 Our vehicle is designed to excel in the WRO Future Engineers challenges, with a focus on **autonomous navigation, obstacle avoidance, and efficient power usage**.
 
 ### Mobility
-- Drive system powered by a **single 6V 150 RPM DC motor** with an attached wheel.  
+- Drive system powered by a **single 6V 150 RPM DC motor**
 - Rear-wheel drive via **gear system**.  
 - **Surpass Hobby 9g D1090FE Digital Servo Motor** controls the front wheels for steering.  
 - Motor driver: **TB6612FNG**, interfaced with **Raspberry Pi 4 Model B**.  
@@ -101,7 +101,7 @@ Source code is located in the [`src/`](./src/) directory, written in **Python** 
 Located in [`components_picture/`](./components-picture/).  
 
 - Raspberry Pi 4 Model B (4GB)  
-- Motor + Wheel Set (6V, 150 RPM)  
+- Motor (6V, 150 RPM)  
 - TB6612FNG Motor Driver  
 - HC-SR04 Ultrasonic Sensor  
 - Raspberry Pi Camera Module  
