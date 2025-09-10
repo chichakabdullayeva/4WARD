@@ -52,7 +52,7 @@ Our vehicle employs multiple sensors for navigation and obstacle detection:
 
 - **HC-SR04 Ultrasonic Sensors (x3)** → front, left, right (range: 2m).  
 - **TCS3200 Color Sensor (x1)** → detect track markers.  
-- **Raspberry Pi Camera Module V1.3** → line-following & visual recognition.  
+- **Raspberry Pi Camera Module V1.3** → visual recognition & object detection.  
 
 Data is processed in real time on **Raspberry Pi 4 Model B** with noise reduction via **moving average filter**.
 
