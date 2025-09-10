@@ -6,9 +6,7 @@ S3_PIN = 24
 OUT_PIN = 25
 LED_PIN = 17
 
-# These calibration values must be updated for your specific lighting and sensor.
-# To find your values, run the script and point the sensor at a white surface.
-# Note the un-normalized 'raw' values for R, G, and B and use them here.
+
 RED_CALIBRATION = 145
 GREEN_CALIBRATION = 200
 BLUE_CALIBRATION = 200
@@ -52,7 +50,7 @@ try:
         print(f"Raw: R={red_frequency} G={green_frequency} B={blue_frequency}")
         print(f"Normalized: R={normalized_red:.2f} G={normalized_green:.2f} B={normalized_blue:.2f}")
 
-        # Detection logic for only orange and blue
+      
         if normalized_blue > normalized_red and normalized_blue > normalized_green and normalized_blue > 150:
             print("Detected Color: BLUE")
         elif normalized_red > normalized_blue and normalized_green > normalized_blue and normalized_red > 150 and normalized_green > 100:
