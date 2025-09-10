@@ -73,7 +73,7 @@ Sensor noise was reduced by **averaging multiple readings**.
 ## Electromechanical Schematics
 Schematics will be uploaded in the [`schemes/`](./schemes/) directory:  
 
-- `wiring-diagram.png` → connections between Raspberry Pi 4 Model B, TB6612FNG, HC-SR04, TCS3200, Camera, Servo, and Battery.  
+- `wiring-diagram.png` → connections between Raspberry Pi 4 Model B, Camera, HC-SR04, TCS3200, Servo, TB6612FNG, Voltage Regulator, DC Motor and Battery.  
 
 ---
 
