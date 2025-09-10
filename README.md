@@ -18,7 +18,7 @@ We are students from **Baku Engineering University**, passionate about electroni
 Our goal is to design a robust vehicle that balances **performance, reliability, and creativity**, inspired by real-world self-driving technology.
 
 Team photos will be uploaded in the [`t-photos/`](./t-photos/) directory:  
-- `team-official.jpeg` → Formal team photo  
+- [`team-official.jpeg/`](./team-official.jpeg/)  → Formal team photo  
 - `team-fun.jpeg` → Fun team photo  
 
 ---
