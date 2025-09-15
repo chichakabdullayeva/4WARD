@@ -2,22 +2,29 @@ import RPi.GPIO as GPIO
 import time
 import cv2
 import numpy as np
+import subprocess
 
 SERVO_PIN = 18
-FRONT_TRIG = 21
-FRONT_ECHO = 20
-LEFT_TRIG = 27
-LEFT_ECHO = 17
-RIGHT_TRIG = 4
-RIGHT_ECHO = 23
+FRONT_TRIG = 4
+FRONT_ECHO = 23
+LEFT_TRIG = 21
+LEFT_ECHO = 20
+RIGHT_TRIG = 27
+RIGHT_ECHO = 17
 
 MOTOR_PWM = 13
 MOTOR_IN1 = 24
 MOTOR_IN2 = 25
 
-STATE_CENTER = 0
-STATE_LEFT = 1
-STATE_RIGHT = 2
+S0_PIN = 22
+S1_PIN = 10
+S2_PIN = 9
+S3_PIN = 11
+OUT_PIN = 8
+
+RED_CALIBRATION = 145
+GREEN_CALIBRATION = 200
+BLUE_CALIBRATION = 200
 
 FILTER_SAMPLES = 5
 left_history = [0] * FILTER_SAMPLES
@@ -35,6 +42,12 @@ GPIO.setup(MOTOR_IN2, GPIO.OUT)
 GPIO.setup(MOTOR_PWM, GPIO.OUT)
 pwm_motor = GPIO.PWM(MOTOR_PWM, 100)
 pwm_motor.start(0)
+
+GPIO.setup(S0_PIN, GPIO.OUT)
+GPIO.setup(S1_PIN, GPIO.OUT)
+GPIO.setup(S2_PIN, GPIO.OUT)
+GPIO.setup(S3_PIN, GPIO.OUT)
+GPIO.setup(OUT_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 def setup_ultrasonic_sensor(trig_pin, echo_pin):
     GPIO.setup(trig_pin, GPIO.OUT)
@@ -76,18 +89,23 @@ def get_distance(trig_pin, echo_pin, samples=5):
 
     return round(sum(values) / len(values), 2) if values else None
 
-current_angle = 0
-def set_angle(target_angle):
-    global current_angle
-    step = 2 if target_angle > current_angle else -2
-    while current_angle != target_angle:
-        current_angle += step
-        if (step > 0 and current_angle > target_angle) or (step < 0 and current_angle < target_angle):
-            current_angle = target_angle
-        duty_cycle = (current_angle + 90) / 18.0 + 2
-        duty_cycle = max(2, min(12, duty_cycle))
-        pwm_servo.ChangeDutyCycle(duty_cycle)
+current_pwm_duty = 8.61
+def set_servo_pwm(target_pwm_duty):
+    global current_pwm_duty
+    
+    target_pwm_duty = max(5.89, min(11.33, target_pwm_duty))
+    
+    step = 0.1 if target_pwm_duty > current_pwm_duty else -0.1
+    while abs(current_pwm_duty - target_pwm_duty) > 0.01:
+        current_pwm_duty += step
+        current_pwm_duty = max(5.89, min(11.33, current_pwm_duty))
+        
+        pwm_servo.ChangeDutyCycle(current_pwm_duty)
         time.sleep(0.02)
+    
+    current_pwm_duty = target_pwm_duty
+    pwm_servo.ChangeDutyCycle(current_pwm_duty)
+
 
 def move_forward():
     GPIO.output(MOTOR_IN1, GPIO.HIGH)
@@ -98,80 +116,112 @@ def stop_motor():
     GPIO.output(MOTOR_IN1, GPIO.LOW)
     GPIO.output(MOTOR_IN2, GPIO.LOW)
     pwm_motor.ChangeDutyCycle(0)
+
+def get_frequency(s2_state, s3_state):
+    GPIO.output(S2_PIN, s2_state)
+    GPIO.output(S3_PIN, s3_state)
     
-try:
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        raise IOError("Cannot open webcam")
-except Exception as e:
-    print(f"Error opening camera: {e}")
-    cap = None
-
-GREEN_LOWER = np.array([35, 50, 50])
-GREEN_UPPER = np.array([85, 255, 255])
-RED_LOWER1 = np.array([0, 50, 50])
-RED_UPPER1 = np.array([10, 255, 255])
-RED_LOWER2 = np.array([170, 50, 50])
-RED_UPPER2 = np.array([180, 255, 255])
-
-def detect_color(frame, lower_bound, upper_bound):
-    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
-    contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    start_time = time.time()
     
-    if contours:
-        largest_contour = max(contours, key=cv2.contourArea)
-        area = cv2.contourArea(largest_contour)
-        if area > 500:
-            x, y, w, h = cv2.boundingRect(largest_contour)
-            return (x, y, w, h), area
-    return None, 0
+    pulse_count = 0
+    while time.time() - start_time < 0.1:
+        if GPIO.input(OUT_PIN) == 0:
+            pulse_count += 1
+            while GPIO.input(OUT_PIN) == 0:
+                pass
+    
+    frequency = pulse_count
+    return frequency
+
+cmd = ["rpicam-vid", "--width", "320", "--height", "240", "--codec", "mjpeg", "--timeout", "0", "--framerate", "30", "-o", "-"]
+proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+bytes_buffer = b""
+
+frame_width = 320
+frame_center = frame_width / 2
+MIN_OBJECT_AREA = 2000
+FRONT_AVOIDANCE_DISTANCE = 5
+
+consecutive_count = 0
+last_detected_color = None
+lap_count = 0
+last_count_time = 0
 
 try:
-    set_angle(0)
-    current_state = STATE_CENTER
-    print("System starting...")
+    set_servo_pwm(8.61)
+    print("System is starting...")
     move_forward()
 
     while True:
-        if cap:
-            ret, frame = cap.read()
-            if not ret:
-                print("Failed to grab frame.")
-                continue
+        # Step 1: Check for front obstacles first (highest priority)
+        front_dist = get_distance(FRONT_TRIG, FRONT_ECHO)
+        if front_dist is not None and front_dist < FRONT_AVOIDANCE_DISTANCE:
+            print(f"Front obstacle detected at {front_dist}cm. Stopping.")
+            stop_motor()
+            set_servo_pwm(8.61)
+            time.sleep(0.5)
+            continue # Skip to the next loop iteration
 
-            green_box, green_area = detect_color(frame, GREEN_LOWER, GREEN_UPPER)
+        # Step 2: Check for colored objects for avoidance (second priority)
+        # Process camera frame
+        bytes_buffer += proc.stdout.read(1024)
+        a = bytes_buffer.find(b'\xff\xd8')
+        b = bytes_buffer.find(b'\xff\xd9')
+        if a != -1 and b != -1:
+            jpg = bytes_buffer[a:b+2]
+            bytes_buffer = bytes_buffer[b+2:]
+            frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
             
-            mask1 = cv2.inRange(cv2.cvtColor(frame, cv2.COLOR_BGR2HSV), RED_LOWER1, RED_UPPER1)
-            mask2 = cv2.inRange(cv2.cvtColor(frame, cv2.COLOR_BGR2HSV), RED_UPPER2, RED_UPPER2)
-            red_mask = cv2.add(mask1, mask2)
+            # Color detection masks
+            lower_green = np.array([45, 100, 100])
+            upper_green = np.array([65, 255, 255])
+            lower_red1 = np.array([170, 120, 120])
+            upper_red1 = np.array([179, 255, 255])
+            lower_red2 = np.array([0, 120, 120])
+            upper_red2 = np.array([10, 255, 255])
             
-            red_contours, _ = cv2.findContours(red_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            red_area = 0
-            red_box = None
-            if red_contours:
-                largest_red_contour = max(red_contours, key=cv2.contourArea)
+            mask_green = cv2.inRange(hsv, lower_green, upper_green)
+            mask_red1 = cv2.inRange(hsv, lower_red1, upper_red1)
+            mask_red2 = cv2.inRange(hsv, lower_red2, upper_red2)
+            mask_red = cv2.bitwise_or(mask_red1, mask_red2)
+            
+            kernel = np.ones((5, 5), np.uint8)
+            mask_green = cv2.erode(mask_green, kernel, iterations=1)
+            mask_green = cv2.dilate(mask_green, kernel, iterations=1)
+            mask_red = cv2.erode(mask_red, kernel, iterations=1)
+            mask_red = cv2.dilate(mask_red, kernel, iterations=1)
+            
+            green_area, red_area = 0, 0
+            
+            contours_green, _ = cv2.findContours(mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours_green:
+                largest_green_contour = max(contours_green, key=cv2.contourArea)
+                green_area = cv2.contourArea(largest_green_contour)
+            
+            contours_red, _ = cv2.findContours(mask_red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours_red:
+                largest_red_contour = max(contours_red, key=cv2.contourArea)
                 red_area = cv2.contourArea(largest_red_contour)
-                if red_area > 500:
-                    red_box = cv2.boundingRect(largest_red_contour)
-                    
-            if green_area > red_area and green_box:
-                print("Green object detected, turning left.")
-                set_angle(-20)
-                current_state = STATE_LEFT
-                time.sleep(1)
-                continue
             
-            if red_area > green_area and red_box:
-                print("Red object detected, turning right.")
-                set_angle(20)
-                current_state = STATE_RIGHT
-                time.sleep(1)
-                continue
+            # Action based on color detection
+            if green_area > MIN_OBJECT_AREA:
+                print("Green object detected. Turning right.")
+                set_servo_pwm(10.83) # Turn right
+            elif red_area > MIN_OBJECT_AREA:
+                print("Red object detected. Turning left.")
+                set_servo_pwm(5.89) # Turn left
+            else:
+                set_servo_pwm(8.61) # Go straight
+                
+            cv2.imshow("Camera", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
         
+        # Step 3: Check for side obstacles if no colored object is in view (third priority)
         left_dist = get_distance(LEFT_TRIG, LEFT_ECHO)
         right_dist = get_distance(RIGHT_TRIG, RIGHT_ECHO)
-        
+
         if left_dist is not None:
             left_history.append(left_dist)
             left_history.pop(0)
@@ -182,41 +232,55 @@ try:
         avg_left_dist = sum(left_history) / FILTER_SAMPLES
         avg_right_dist = sum(right_history) / FILTER_SAMPLES
 
-        if current_state == STATE_CENTER:
-            if avg_left_dist < 15 and avg_left_dist > 0:
-                print("Obstacle on the left, turning right.")
-                set_angle(20)
-                current_state = STATE_RIGHT
-            elif avg_right_dist < 15 and avg_right_dist > 0:
-                print("Obstacle on the right, turning left.")
-                set_angle(-20)
-                current_state = STATE_LEFT
-            else:
-                print("Path is clear, holding center.")
+        if avg_left_dist < 15 and avg_left_dist > 0:
+            set_servo_pwm(10.83) # Turn right
+        elif avg_right_dist < 15 and avg_right_dist > 0:
+            set_servo_pwm(5.89) # Turn left
+        else:
+            set_servo_pwm(8.61) # Go straight
+        
+        # Step 4: Check color sensor for laps (lowest priority)
+        current_time = time.time()
+        if current_time - last_count_time < 2:
+            time.sleep(0.1)
+            continue
+        
+        red_frequency = get_frequency(GPIO.LOW, GPIO.LOW)
+        green_frequency = get_frequency(GPIO.HIGH, GPIO.HIGH)
+        blue_frequency = get_frequency(GPIO.LOW, GPIO.HIGH)
+        
+        normalized_red = (red_frequency / RED_CALIBRATION) * 255
+        normalized_green = (green_frequency / GREEN_CALIBRATION) * 255
+        normalized_blue = (blue_frequency / BLUE_CALIBRATION) * 255
+        
+        current_color = "UNKNOWN"
+        if normalized_blue > normalized_red and normalized_blue > normalized_green and normalized_blue > 150:
+            current_color = "BLUE"
+        elif normalized_red > normalized_blue and normalized_green > normalized_blue and normalized_red > 150 and normalized_green > 100:
+            current_color = "ORANGE"
 
-        elif current_state == STATE_RIGHT:
-            if avg_left_dist > 20:
-                print("Left path is clear, returning to center.")
-                set_angle(0)
-                current_state = STATE_CENTER
-            else:
-                pass
-        
-        elif current_state == STATE_LEFT:
-            if avg_right_dist > 20:
-                print("Right path is clear, returning to center.")
-                set_angle(0)
-                current_state = STATE_CENTER
-            else:
-                pass
-        
+        if current_color == last_detected_color:
+            consecutive_count += 1
+        else:
+            last_detected_color = current_color
+            consecutive_count = 1
+
+        if current_color != "UNKNOWN" and consecutive_count >= 12:
+            lap_count += 1
+            print(f"Color ({current_color}) detected 12 times in a row! Lap: {lap_count}")
+            consecutive_count = 0
+            last_detected_color = None
+            last_count_time = current_time
+
+        if lap_count >= 3:
+            print("Task completed. Laps completed: 3. System is shutting down.")
+            break
+
         time.sleep(0.1)
 
-except KeyboardInterrupt:
-    print("Program terminated by user.")
 finally:
-    if cap:
-        cap.release()
+    proc.terminate()
+    cv2.destroyAllWindows()
     stop_motor()
     pwm_servo.stop()
     pwm_motor.stop()
