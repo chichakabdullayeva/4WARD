@@ -1,53 +1,83 @@
 import RPi.GPIO as GPIO
 import time
-import cv2
-import numpy as np
 
+# Ultrasonic sensor pins
+FRONT_TRIG = 4
+FRONT_ECHO = 23
+LEFT_TRIG = 21
+LEFT_ECHO = 20
+RIGHT_TRIG = 27
+RIGHT_ECHO = 17
+
+# Servo pin
 SERVO_PIN = 18
-FRONT_TRIG = 21
-FRONT_ECHO = 20
-LEFT_TRIG = 27
-LEFT_ECHO = 17
-RIGHT_TRIG = 4
-RIGHT_ECHO = 23
 
-MOTOR_PWM = 13
+# Motor driver pins
 MOTOR_IN1 = 24
 MOTOR_IN2 = 25
-
-STATE_CENTER = 0
-STATE_LEFT = 1
-STATE_RIGHT = 2
-
-FILTER_SAMPLES = 5
-left_history = [0] * FILTER_SAMPLES
-right_history = [0] * FILTER_SAMPLES
+MOTOR_PWM = 13
+STBY_PIN = 22
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 
-GPIO.setup(SERVO_PIN, GPIO.OUT)
-pwm_servo = GPIO.PWM(SERVO_PIN, 50)
-pwm_servo.start(0)
-
-GPIO.setup(MOTOR_IN1, GPIO.OUT)
-GPIO.setup(MOTOR_IN2, GPIO.OUT)
-GPIO.setup(MOTOR_PWM, GPIO.OUT)
-pwm_motor = GPIO.PWM(MOTOR_PWM, 100)
-pwm_motor.start(0)
+class TB6612MotorDriver:
+    def __init__(self, in1_pin, in2_pin, pwm_pin, stby_pin, pwm_freq=1000):
+        self.in1_pin = in1_pin
+        self.in2_pin = in2_pin
+        self.pwm_pin = pwm_pin
+        self.stby_pin = stby_pin
+        
+        # Setup motor GPIO pins
+        GPIO.setup([self.in1_pin, self.in2_pin, self.stby_pin], GPIO.OUT)
+        GPIO.setup(self.pwm_pin, GPIO.OUT)
+        
+        # Initialize PWM
+        self.pwm = GPIO.PWM(self.pwm_pin, pwm_freq)
+        self.pwm.start(0)
+        
+        # Enable driver (standby off)
+        GPIO.output(self.stby_pin, GPIO.HIGH)
+        print("Motor driver initialized")
+    
+    def forward(self, speed):
+        speed = max(0, min(100, speed))
+        GPIO.output(self.in1_pin, GPIO.HIGH)
+        GPIO.output(self.in2_pin, GPIO.LOW)
+        self.pwm.ChangeDutyCycle(speed)
+        print(f"Motor moving forward at {speed}% speed")
+    
+    def backward(self, speed):
+        speed = max(0, min(100, speed))
+        GPIO.output(self.in1_pin, GPIO.LOW)
+        GPIO.output(self.in2_pin, GPIO.HIGH)
+        self.pwm.ChangeDutyCycle(speed)
+        print(f"Motor moving backward at {speed}% speed")
+    
+    def stop(self):
+        GPIO.output(self.in1_pin, GPIO.HIGH)
+        GPIO.output(self.in2_pin, GPIO.HIGH)
+        self.pwm.ChangeDutyCycle(0)
+        print("Motor stopped (brake)")
+    
+    def coast(self):
+        GPIO.output(self.in1_pin, GPIO.LOW)
+        GPIO.output(self.in2_pin, GPIO.LOW)
+        self.pwm.ChangeDutyCycle(0)
+        print("Motor coasting")
+    
+    def cleanup(self):
+        self.pwm.stop()
 
 def setup_ultrasonic_sensor(trig_pin, echo_pin):
     GPIO.setup(trig_pin, GPIO.OUT)
     GPIO.setup(echo_pin, GPIO.IN)
     GPIO.output(trig_pin, False)
     time.sleep(0.2)
+    print(f"Sensor on pins TRIG={trig_pin}, ECHO={echo_pin} configured.")
 
-setup_ultrasonic_sensor(FRONT_TRIG, FRONT_ECHO)
-setup_ultrasonic_sensor(LEFT_TRIG, LEFT_ECHO)
-setup_ultrasonic_sensor(RIGHT_TRIG, RIGHT_ECHO)
-
-def get_distance(trig_pin, echo_pin, samples=5):
-    values = []
+def get_distance(trig_pin, echo_pin, samples=3):
+    distances = []
     for _ in range(samples):
         GPIO.output(trig_pin, True)
         time.sleep(0.00001)
@@ -59,165 +89,132 @@ def get_distance(trig_pin, echo_pin, samples=5):
         timeout = time.time()
         while GPIO.input(echo_pin) == 0:
             pulse_start = time.time()
-            if time.time() - timeout > 0.02:
+            if time.time() - timeout > 0.04:
                 return None
-
+        
         timeout = time.time()
         while GPIO.input(echo_pin) == 1:
             pulse_end = time.time()
-            if time.time() - timeout > 0.02:
+            if time.time() - timeout > 0.04:
                 return None
         
         pulse_duration = pulse_end - pulse_start
-        distance = pulse_duration * 17150
-        if distance > 0:
-            values.append(distance)
-        time.sleep(0.01)
-
-    return round(sum(values) / len(values), 2) if values else None
-
-current_angle = 0
-def set_angle(target_angle):
-    global current_angle
-    step = 2 if target_angle > current_angle else -2
-    while current_angle != target_angle:
-        current_angle += step
-        if (step > 0 and current_angle > target_angle) or (step < 0 and current_angle < target_angle):
-            current_angle = target_angle
-        duty_cycle = (current_angle + 90) / 18.0 + 2
-        duty_cycle = max(2, min(12, duty_cycle))
-        pwm_servo.ChangeDutyCycle(duty_cycle)
-        time.sleep(0.02)
-
-def move_forward():
-    GPIO.output(MOTOR_IN1, GPIO.HIGH)
-    GPIO.output(MOTOR_IN2, GPIO.LOW)
-    pwm_motor.ChangeDutyCycle(60)
-
-def stop_motor():
-    GPIO.output(MOTOR_IN1, GPIO.LOW)
-    GPIO.output(MOTOR_IN2, GPIO.LOW)
-    pwm_motor.ChangeDutyCycle(0)
-    
-try:
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        raise IOError("Cannot open webcam")
-except Exception as e:
-    print(f"Error opening camera: {e}")
-    cap = None
-
-GREEN_LOWER = np.array([35, 50, 50])
-GREEN_UPPER = np.array([85, 255, 255])
-RED_LOWER1 = np.array([0, 50, 50])
-RED_UPPER1 = np.array([10, 255, 255])
-RED_LOWER2 = np.array([170, 50, 50])
-RED_UPPER2 = np.array([180, 255, 255])
-
-def detect_color(frame, lower_bound, upper_bound):
-    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
-    contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    
-    if contours:
-        largest_contour = max(contours, key=cv2.contourArea)
-        area = cv2.contourArea(largest_contour)
-        if area > 500:
-            x, y, w, h = cv2.boundingRect(largest_contour)
-            return (x, y, w, h), area
-    return None, 0
-
-try:
-    set_angle(0)
-    current_state = STATE_CENTER
-    print("System starting...")
-    move_forward()
-
-    while True:
-        if cap:
-            ret, frame = cap.read()
-            if not ret:
-                print("Failed to grab frame.")
-                continue
-
-            green_box, green_area = detect_color(frame, GREEN_LOWER, GREEN_UPPER)
-            
-            mask1 = cv2.inRange(cv2.cvtColor(frame, cv2.COLOR_BGR2HSV), RED_LOWER1, RED_UPPER1)
-            mask2 = cv2.inRange(cv2.cvtColor(frame, cv2.COLOR_BGR2HSV), RED_UPPER2, RED_UPPER2)
-            red_mask = cv2.add(mask1, mask2)
-            
-            red_contours, _ = cv2.findContours(red_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            red_area = 0
-            red_box = None
-            if red_contours:
-                largest_red_contour = max(red_contours, key=cv2.contourArea)
-                red_area = cv2.contourArea(largest_red_contour)
-                if red_area > 500:
-                    red_box = cv2.boundingRect(largest_red_contour)
-                    
-            if green_area > red_area and green_box:
-                print("Green object detected, turning left.")
-                set_angle(-20)
-                current_state = STATE_LEFT
-                time.sleep(1)
-                continue
-            
-            if red_area > green_area and red_box:
-                print("Red object detected, turning right.")
-                set_angle(20)
-                current_state = STATE_RIGHT
-                time.sleep(1)
-                continue
+        distance_cm = pulse_duration * 17150
         
+        if distance_cm > 0:
+            distances.append(distance_cm)
+            
+        time.sleep(0.02)
+    
+    if distances:
+        return round(sum(distances) / len(distances), 2)
+    else:
+        return None
+
+
+def set_servo_position(servo_pwm, position):
+    """
+    Set servo to specific position
+    position: 'left', 'center', 'right'
+    """
+    if position == 'left':
+        duty_cycle = 5.5   # 0 degrees (left)
+    elif position == 'center':
+        duty_cycle = 8.5   # 90 degrees (center)
+    elif position == 'right':
+        duty_cycle = 12.5  # 180 degrees (right)
+    else:
+        duty_cycle = 8.5   # default to center
+    
+    servo_pwm.ChangeDutyCycle(duty_cycle)
+    time.sleep(0.3)  # Give servo time to move
+    print(f"Servo moved to {position} position (duty cycle: {duty_cycle})")
+
+try:
+    # Setup sensors
+    setup_ultrasonic_sensor(FRONT_TRIG, FRONT_ECHO)
+    setup_ultrasonic_sensor(LEFT_TRIG, LEFT_ECHO)
+    setup_ultrasonic_sensor(RIGHT_TRIG, RIGHT_ECHO)
+    
+    # Setup servo
+    GPIO.setup(SERVO_PIN, GPIO.OUT)
+    servo_pwm = GPIO.PWM(SERVO_PIN, 50)
+    servo_pwm.start(8.5)  # Start at center position
+    print("Servo initialized at center position")
+    
+    # Initialize motor
+    motor = TB6612MotorDriver(MOTOR_IN1, MOTOR_IN2, MOTOR_PWM, STBY_PIN)
+    
+    print("Robot control started... Press Ctrl+C to exit.")
+    
+    while True:
         left_dist = get_distance(LEFT_TRIG, LEFT_ECHO)
         right_dist = get_distance(RIGHT_TRIG, RIGHT_ECHO)
+        front_dist = get_distance(FRONT_TRIG, FRONT_ECHO)
         
-        if left_dist is not None:
-            left_history.append(left_dist)
-            left_history.pop(0)
-        if right_dist is not None:
-            right_history.append(right_dist)
-            right_history.pop(0)
+        print("-" * 50)
+        print(f"Distances - Left: {left_dist}, Right: {right_dist}, Front: {front_dist}")
         
-        avg_left_dist = sum(left_history) / FILTER_SAMPLES
-        avg_right_dist = sum(right_history) / FILTER_SAMPLES
-
-        if current_state == STATE_CENTER:
-            if avg_left_dist < 15 and avg_left_dist > 0:
-                print("Obstacle on the left, turning right.")
-                set_angle(20)
-                current_state = STATE_RIGHT
-            elif avg_right_dist < 15 and avg_right_dist > 0:
-                print("Obstacle on the right, turning left.")
-                set_angle(-20)
-                current_state = STATE_LEFT
+        # Obstacle avoidance logic with motor control
+        if front_dist is not None and front_dist <= 10:
+            # Obstacle in front - stop and decide direction
+            motor.stop()
+            set_servo_position(servo_pwm, 'center')
+            print("Obstacle ahead! Stopping motor.")
+            
+            # Check left and right for best path
+            if left_dist is not None and right_dist is not None:
+                if left_dist > right_dist and left_dist > 10:
+                    set_servo_position(servo_pwm, 'left')
+                    motor.backward(30)  # Reverse a bit
+                    time.sleep(0.5)
+                    motor.stop()
+                    print("Turning left")
+                elif right_dist > 20:
+                    set_servo_position(servo_pwm, 'right')
+                    motor.backward(30)  # Reverse a bit
+                    time.sleep(0.5)
+                    motor.stop()
+                    print("Turning right")
+                else:
+                    motor.backward(40)  # Back up if both sides blocked
+                    print("Backing up - both sides blocked")
             else:
-                print("Path is clear, holding center.")
-
-        elif current_state == STATE_RIGHT:
-            if avg_left_dist > 20:
-                print("Left path is clear, returning to center.")
-                set_angle(0)
-                current_state = STATE_CENTER
+                motor.backward(40)
+                print("Backing up - sensor read error")
+                
+        elif left_dist is not None and left_dist <= 10:
+            # Obstacle on left - turn servo right to avoid it
+            set_servo_position(servo_pwm, 'right')
+            motor.forward(40)
+            print(f"Left obstacle at {left_dist:.2f} cm. Steering right.")
+            
+        elif right_dist is not None and right_dist <= 10:
+            # Obstacle on right - turn servo left to avoid it
+            set_servo_position(servo_pwm, 'left')
+            motor.forward(40)
+            print(f"Right obstacle at {right_dist:.2f} cm. Steering left.")
+            
+        else:
+            # Path clear - move forward with centered servo
+            set_servo_position(servo_pwm, 'center')
+            motor.forward(50)
+            if front_dist is not None:
+                print(f"Path clear. Moving forward. Front distance: {front_dist:.2f} cm")
             else:
-                pass
+                print("Path clear. Moving forward. Front sensor error.")
         
-        elif current_state == STATE_LEFT:
-            if avg_right_dist > 20:
-                print("Right path is clear, returning to center.")
-                set_angle(0)
-                current_state = STATE_CENTER
-            else:
-                pass
-        
-        time.sleep(0.1)
+        time.sleep(0.3)
 
 except KeyboardInterrupt:
-    print("Program terminated by user.")
+    print("\nProgram terminated by user.")
+    
 finally:
-    if cap:
-        cap.release()
-    stop_motor()
-    pwm_servo.stop()
-    pwm_motor.stop()
+    # Cleanup everything
+    if 'motor' in locals():
+        motor.stop()
+        motor.cleanup()
+    if 'servo_pwm' in locals():
+        servo_pwm.stop()
     GPIO.cleanup()
+    print("All components cleaned up.")
